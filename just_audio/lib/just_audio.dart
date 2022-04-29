@@ -96,7 +96,6 @@ class AudioPlayer {
   final String _id;
   final _proxy = _ProxyHttpServer();
   AudioSource? _audioSource;
-  UriAudioSource? _uriAudioSource;
   final Map<String, AudioSource> _audioSources = {};
   bool _disposed = false;
   _InitialSeekValues? _initialSeekValues;
@@ -692,7 +691,6 @@ class AudioPlayer {
   }) async {
     if (_disposed) return null;
     _audioSource = null;
-    _uriAudioSource = null;
     _isDvrSource = false;
     _initialSeekValues =
         _InitialSeekValues(position: initialPosition, index: initialIndex);
@@ -700,8 +698,11 @@ class AudioPlayer {
         currentIndex: initialIndex ?? 0,
         updatePosition: initialPosition ?? Duration.zero));
     _audioSource = source;
-    _uriAudioSource = source as UriAudioSource;
-    _isDvrSource = _uriAudioSource?.uri.toString().endsWith('?DVR') ?? false;
+    try {
+      _isDvrSource = (source as UriAudioSource).uri.toString().endsWith('?DVR');
+    } catch (e) {
+      _isDvrSource = false;
+    }
     _broadcastSequence();
     Duration? duration;
     if (playing) preload = true;
@@ -1123,7 +1124,6 @@ class AudioPlayer {
       _idlePlatform = null;
     }
     _audioSource = null;
-    _uriAudioSource = null;
     _isDvrSource = false;
     _audioSources.values.forEach((s) => s._dispose());
     _audioSources.clear();
@@ -1243,7 +1243,9 @@ class AudioPlayer {
           updateTime: message.updateTime,
           updatePosition: message.updatePosition,
           bufferedPosition: message.bufferedPosition,
-          duration: _isDvrSource ? message.bufferedPosition : duration,
+          duration: _isDvrSource && message.bufferedPosition != Duration.zero
+              ? message.bufferedPosition
+              : duration,
           icyMetadata: message.icyMetadata == null
               ? null
               : IcyMetadata._fromMessage(message.icyMetadata!),
