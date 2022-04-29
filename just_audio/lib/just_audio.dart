@@ -96,6 +96,7 @@ class AudioPlayer {
   final String _id;
   final _proxy = _ProxyHttpServer();
   AudioSource? _audioSource;
+  UriAudioSource? _uriAudioSource;
   final Map<String, AudioSource> _audioSources = {};
   bool _disposed = false;
   _InitialSeekValues? _initialSeekValues;
@@ -132,6 +133,7 @@ class AudioPlayer {
   AndroidAudioAttributes? _androidAudioAttributes;
   final bool _androidApplyAudioAttributes;
   final bool _handleAudioSessionActivation;
+  bool _isDvrSource = false;
 
   /// Counts how many times [_setPlatformActive] is called.
   int _activationCount = 0;
@@ -690,12 +692,16 @@ class AudioPlayer {
   }) async {
     if (_disposed) return null;
     _audioSource = null;
+    _uriAudioSource = null;
+    _isDvrSource = false;
     _initialSeekValues =
         _InitialSeekValues(position: initialPosition, index: initialIndex);
     _playbackEventSubject.add(_playbackEvent = PlaybackEvent(
         currentIndex: initialIndex ?? 0,
         updatePosition: initialPosition ?? Duration.zero));
     _audioSource = source;
+    _uriAudioSource = source as UriAudioSource;
+    _isDvrSource = _uriAudioSource?.uri.toString().endsWith('?DVR') ?? false;
     _broadcastSequence();
     Duration? duration;
     if (playing) preload = true;
@@ -1117,6 +1123,8 @@ class AudioPlayer {
       _idlePlatform = null;
     }
     _audioSource = null;
+    _uriAudioSource = null;
+    _isDvrSource = false;
     _audioSources.values.forEach((s) => s._dispose());
     _audioSources.clear();
     _proxy.stop();
@@ -1235,7 +1243,7 @@ class AudioPlayer {
           updateTime: message.updateTime,
           updatePosition: message.updatePosition,
           bufferedPosition: message.bufferedPosition,
-          duration: duration,
+          duration: _isDvrSource ? message.bufferedPosition : duration,
           icyMetadata: message.icyMetadata == null
               ? null
               : IcyMetadata._fromMessage(message.icyMetadata!),
