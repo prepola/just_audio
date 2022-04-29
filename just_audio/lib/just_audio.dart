@@ -1243,9 +1243,7 @@ class AudioPlayer {
           updateTime: message.updateTime,
           updatePosition: message.updatePosition,
           bufferedPosition: message.bufferedPosition,
-          duration: _isDvrSource && message.bufferedPosition != Duration.zero
-              ? message.bufferedPosition
-              : duration,
+          duration: _isDvrSource ? null : duration,
           icyMetadata: message.icyMetadata == null
               ? null
               : IcyMetadata._fromMessage(message.icyMetadata!),
